@@ -28,6 +28,8 @@ genişletilebilir ve tamamen CLI tabanlıdır. Beyaz şapka güvenlik çalışma
 ```
 xas/
  ├─ package.json
+ ├─ xas.sh / xas.cmd        Başlatıcılar (ilk çalıştırmada bağımlılık kurar)
+ ├─ bin/xas.js              Bootstrap (npm install + uygulamayı başlatır)
  ├─ reports/
  ├─ src/
  │   ├─ index.js            Ana giriş (REPL + tab completion)
@@ -54,10 +56,36 @@ xas/
 # 🚀 BAŞLANGIÇ
 ------------------------------------------------------------
 
+Ön koşul: **Node.js** kurulu olmalı (https://nodejs.org). XAS'ın kendi Node
+kütüphaneleri (ssh2, xml2js) ilk çalıştırmada otomatik kurulur.
+
+### Yol 1 — Başlatıcı dosya (önerilen; bağımlılıkları kendi kurar)
 ```bash
+# Linux / macOS
+./xas.sh
+```
+```bash
+# Windows (çift tıkla ya da terminalden)
+xas.cmd
+```
+
+### Yol 2 — Terminalden sadece `xas` (global komut)
+```bash
+cd xas
+npm link        # bir kerelik; global 'xas' komutunu kurar
+xas             # artık her dizinden çalışır
+```
+
+### Yol 3 — Klasik npm
+```bash
+cd xas
 npm install
 npm start
 ```
+
+> 🔧 **Güvenlik araçları** (nmap, nuclei, sqlmap, metasploit, …) otomatik
+> kurulmaz. Durumu `tools` ile görür, `install <araç>` ile (Linux'ta onaylı
+> `apt`) kurarsınız.
 
 ------------------------------------------------------------
 # ⚡ TAM TARAMA (önerilen akış)

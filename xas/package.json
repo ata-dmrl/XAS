@@ -3,9 +3,12 @@
   "version": "2.0.0",
   "description": "XAS - Extended Analysis System | Beyaz Şapka Güvenlik Analiz Aracı (Nmap & ZAP)",
   "main": "src/index.js",
+  "bin": {
+    "xas": "bin/xas.js"
+  },
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node src/index.js",
+    "start": "node bin/xas.js",
+    "dev": "node bin/xas.js",
     "test": "node --test"
   },
   "keywords": [
