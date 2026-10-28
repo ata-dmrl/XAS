@@ -1,1 +1,32 @@
-/node_modules
+# ───────── Bağımlılıklar ─────────
+node_modules/
+
+# ───────── Kullanıcı yapılandırması ─────────
+scope.json
+
+# ───────── Üretilen raporlar ve tarama çıktıları ─────────
+reports/report.txt
+reports/report.html
+reports/report.json
+reports/report.csv
+reports/scan-*.json
+reports/remediation-*.log
+
+# ───────── Araçların geçici çıktı dosyaları ─────────
+nmap_output.xml
+zap_output.json
+nikto_output.csv
+gobuster_output.txt
+tshark_capture.pcap
+msf_xas.rc
+
+# ───────── Log / hata ayıklama ─────────
+npm-debug.log*
+*.log
+
+# ───────── Editör / işletim sistemi artıkları ─────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

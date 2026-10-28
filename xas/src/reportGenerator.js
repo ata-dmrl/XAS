@@ -1,11 +1,16 @@
 const fs = require("fs");
 const path = require("path");
+const riskScorer = require("./riskScorer");
 
 function generateTxtReport(issues) {
   let txt = "═══════════════════════════════════════════════════\n";
   txt += "         XAS Security Report\n";
   txt += `         Tarih: ${new Date().toLocaleString("tr-TR")}\n`;
   txt += "═══════════════════════════════════════════════════\n\n";
+
+  const risk = riskScorer.summarize(issues);
+  txt += "─── RİSK SKORU ───\n";
+  txt += `  ${risk.score.toFixed(1)} / 10   [${risk.grade.letter} - ${risk.grade.label}]\n\n`;
 
   // İstatistik özeti
   const counts = {};
@@ -57,6 +62,9 @@ function generateHtmlReport(issues) {
     low: "#40c4ff",
     info: "#b0bec5"
   };
+
+  const risk = riskScorer.summarize(issues);
+  const gradeColor = { A: "#3fb950", B: "#58a6ff", C: "#ffab40", D: "#ff5252", F: "#e040fb" }[risk.grade.letter] || "#b0bec5";
 
   const severityOrder = ["critical", "high", "medium", "low", "info"];
 
@@ -114,6 +122,12 @@ function generateHtmlReport(issues) {
   <h1>🛡️ XAS Security Report</h1>
   <p class="subtitle">Oluşturulma: ${new Date().toLocaleString("tr-TR")} | Toplam Zafiyet: ${issues.length}</p>
 
+  <div class="stats-box" style="border-left:6px solid ${gradeColor};">
+    <h2>🎯 Risk Skoru</h2>
+    <div style="font-size:34px;font-weight:bold;color:${gradeColor};">${risk.score.toFixed(1)} <span style="font-size:18px;color:#8b949e;">/ 10</span></div>
+    <div style="color:${gradeColor};font-weight:bold;margin-top:4px;">${risk.grade.letter} — ${escapeHtml(risk.grade.label)}</div>
+  </div>
+
   <div class="stats-box">
     <h2>📊 Zafiyet Dağılımı</h2>
     <div class="summary">`;
@@ -162,11 +176,13 @@ function generateHtmlReport(issues) {
 }
 
 function generateJsonReport(issues) {
+  const risk = riskScorer.summarize(issues);
   const report = {
     tool: "XAS Security Scanner",
     version: "2.0.0",
     generatedAt: new Date().toISOString(),
     totalIssues: issues.length,
+    risk: { score: risk.score, grade: risk.grade.letter, label: risk.grade.label },
     summary: {},
     issues: issues.map(i => ({
       id: i.id,

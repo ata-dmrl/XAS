@@ -41,7 +41,8 @@ function mapZapAlertToFixKey(alert) {
 }
 
 function mapZapRiskToSeverity(risk) {
-  const r = (risk || "").toLowerCase();
+  // ZAP 'riskdesc' çoğu zaman "High (Medium)" biçiminde gelir; ilk kelimeyi al.
+  const r = (risk || "").toLowerCase().split("(")[0].trim();
   if (r === "high") return "critical";
   if (r === "medium") return "high";
   if (r === "low") return "medium";

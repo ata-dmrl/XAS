@@ -1,278 +1,218 @@
 XAS – Extended Analysis System v2.0.0
-Gelişmiş Güvenlik Analiz Konsolu (Nmap + ZAP + Parser + Fix Rehberi + Raporlama)
+Güvenlik Araçları Yönetim Konsolu (çok araçlı tarama + risk skoru + fix rehberi + raporlama)
 
-XAS, hem ağ hem de web uygulaması güvenlik testlerinde kullanılmak üzere tasarlanmış,
-modüler, genişletilebilir ve tamamen CLI tabanlı bir güvenlik analiz aracıdır.
-Beyaz şapka güvenlik uzmanları için tasarlanmıştır.
+XAS, sahip olduğunuz ya da yetkili olduğunuz sistemlerdeki güvenlik açıklarını
+birden fazla güvenlik aracını tek bir konsoldan yöneterek bulmanızı ve bunların
+nasıl kapatılacağına dair rehber elde etmenizi sağlar. Modüler (adapter tabanlı),
+genişletilebilir ve tamamen CLI tabanlıdır. Beyaz şapka güvenlik çalışması içindir.
+
+> ⚠️ Yalnızca sahibi olduğunuz veya açıkça yetki aldığınız sistemleri tarayın.
+> İzinsiz tarama çoğu ülkede suçtur.
 
 Özellikler:
-✅ Akıllı tarama (IP/domain otomatik algılama)
-✅ Nmap hızlı ve tam tarama
-✅ ZAP hızlı ve tam tarama
-✅ scan full – Nmap + ZAP birleşik tarama
-✅ Otomatik araç kontrolü (Nmap/ZAP kurulu mu?)
-✅ 19 zafiyet türü için detaylı fix rehberi
-✅ Zafiyet arama ve filtreleme
-✅ Severity bazlı renk kodlu çıktı
-✅ TXT, HTML ve JSON rapor oluşturma
-✅ CSV ve JSON dışa aktarma
-✅ Tab completion desteği
-✅ Modüler runner ve parser mimarisi
+✅ Tek komutla tam tarama: `start <hedef>` → uygun tüm araçları çalıştırır
+✅ 0–10 risk skoru + A–F harf notu (kural tabanlı, offline, belirleyici)
+✅ Toplu kapatma rehberi: `guide`
+✅ Adapter tabanlı araç mimarisi — yeni araç = tek dosya
+✅ 11 araç: nmap, nbtscan, zap, nikto, sqlmap, gobuster, tshark, msfconsole + GUI (wireshark, burp, armitage)
+✅ Araç yönetimi: `tools` (durum), `install` (onaylı apt kurulumu), `launch` (GUI)
+✅ 20 zafiyet türü için detaylı fix rehberi
+✅ Zafiyet arama, filtreleme, severity bazlı renkli çıktı
+✅ TXT, HTML, JSON rapor + CSV/JSON dışa aktarma
+✅ Tab completion
 
 ------------------------------------------------------------
 # 📁 PROJE YAPISI
 ------------------------------------------------------------
 
+```
 xas/
  ├─ package.json
- ├─ node_modules/
  ├─ reports/
  ├─ src/
  │   ├─ index.js            Ana giriş (REPL + tab completion)
- │   ├─ commands.js          Tüm komut yönetimi
- │   ├─ toolCheck.js         Araç kurulum kontrolü
- │   ├─ issue.js             Zafiyet veri modeli
- │   ├─ fixGuides.js         19 zafiyet fix rehberi
- │   ├─ banner.js            Renkli ASCII banner
- │   ├─ parsers/
- │   │   ├─ nmap.js          Nmap XML parser (10+ port eşleme)
- │   │   └─ zap.js           ZAP JSON parser (20+ alert eşleme)
- │   ├─ runners/
- │   │   ├─ nmapRunner.js    Nmap çalıştırıcı
- │   │   └─ zapRunner.js     ZAP çalıştırıcı
- │   └─ reportGenerator.js   TXT + HTML + JSON rapor
+ │   ├─ commands.js         Tüm komut yönetimi
+ │   ├─ riskScorer.js       0–10 risk skoru + A–F harf notu (kural tabanlı)
+ │   ├─ toolCheck.js        Başlangıç araç durumu
+ │   ├─ issue.js            Zafiyet veri modeli
+ │   ├─ fixGuides.js        20 zafiyet fix rehberi
+ │   ├─ banner.js           Renkli ASCII banner
+ │   ├─ parsers/            Nmap XML / ZAP JSON ayrıştırıcıları
+ │   ├─ tools/
+ │   │   ├─ Adapter.js      Ortak adapter taban sınıfı (isInstalled/install/run/launch)
+ │   │   ├─ registry.js     Araç kayıt sistemi (get/byCategory/managedFor/launchable)
+ │   │   └─ adapters/       Her araç bir dosya:
+ │   │       ├─ nmap.js  nbtscan.js         (keşif)
+ │   │       ├─ zap.js  nikto.js  sqlmap.js  gobuster.js  burpsuite.js (web)
+ │   │       ├─ tshark.js  wireshark.js      (ağ trafiği)
+ │   │       └─ msfconsole.js  armitage.js   (doğrulama / sömürü)
+ │   └─ reportGenerator.js  TXT + HTML + JSON rapor
  └─ README.md
+```
 
 ------------------------------------------------------------
 # 🚀 BAŞLANGIÇ
 ------------------------------------------------------------
 
-## 1- Projeyi başlat
 ```bash
 npm install
 npm start
 ```
 
-Konsol açıldığında:
-```
-██   ██  █████  ███████
- ██ ██  ██   ██ ██
-  ███   ███████  █████
- ██ ██  ██   ██      ██
-██   ██ ██   ██ ███████
-────────────────────────────────────────
-        X A S   S E C U R I T Y
-   Active Recon & Analysis Framework
-        v2.0.0 | Beyaz Şapka Aracı
-────────────────────────────────────────
-
-[*] Araç Durumu Kontrolü
-─────────────────────────────────────────────
-  ✔ Nmap  → Kurulu
-  ✘ ZAP   → Kurulu değil
-─────────────────────────────────────────────
-
-XAS Security Console v2.0.0
-Komutlar için 'help' yazın.
-
-xas>
-```
-
 ------------------------------------------------------------
-# AKILLI TARAMA
+# ⚡ TAM TARAMA (önerilen akış)
 ------------------------------------------------------------
 
-### IP adresi taraması (otomatik Nmap):
+Tek komutla hedefe uygun tüm araçları çalıştırır, bulguları birleştirir ve
+0–10 risk skoru üretir:
+
 ```bash
-xas> scan 192.168.1.10
+xas> start 192.168.1.10
+xas> start https://hedef.com
 ```
 
-### Web adresi taraması (otomatik ZAP):
-```bash
-xas> scan https://hedef.com
+- IP hedefte: nmap, nbtscan, tshark, msfconsole (doğrulama)
+- URL hedefte: nmap, zap, nikto, sqlmap, gobuster, tshark
+
+Kurulu olmayan araçlar otomatik atlanır. Tarama sonunda risk kartı basılır:
+
+```
+╔══════════════════════════════════════════════════════╗
+║  XAS RİSK RAPORU — https://hedef.com
+╠══════════════════════════════════════════════════════╣
+║  RİSK SKORU: 8.7 / 10   [D - Riskli — kısa sürede müdahale]
+╚══════════════════════════════════════════════════════╝
+
+  Dağılım:  CRITICAL 1 │ HIGH 3 │ MEDIUM 2 │ LOW 1 │ INFO 0
+
+  En kritik bulgular:
+   #4 [CRITICAL] SQL Injection: id   http://hedef.com/login.php
+   #2 [HIGH    ] Erişilebilir yönetim yolu: /admin   http://hedef.com/admin
+   ...
+
+  Kapatma rehberi: guide | tüm liste: list | rapor: report
 ```
 
-### Kapsamlı tarama (Nmap + ZAP birlikte):
-```bash
-xas> scan full 192.168.1.10
-```
+## Risk skoru nasıl hesaplanır?
+Kural tabanlı ve belirleyicidir (LLM yok). Her bulgu severity'sine göre bir taban
+puan alır (critical 9.5 … info 0.5). Hedef skoru "en kötü açık baskındır, ama adet
+de sayar" modeliyle hesaplanır: en yüksek bulgu temel puandır, kalan bulgular azalan
+ağırlıkla eklenir, tavan 10'dur.
+
+| Skor | Not | Anlam |
+|------|-----|-------|
+| 0–2 | A | Temiz / düşük risk |
+| 2–4 | B | Kabul edilebilir |
+| 4–6.5 | C | Dikkat — planlı düzeltme |
+| 6.5–8.5 | D | Riskli — kısa sürede müdahale |
+| 8.5–10 | F | Kritik — acil müdahale |
 
 ------------------------------------------------------------
-# NMAP KOMUTLARI
+# 🧰 ARAÇ YÖNETİMİ
 ------------------------------------------------------------
 
-### Hızlı Nmap taraması:
-```bash
-xas> run nmap -sV 192.168.1.10
-```
-
-### Tam Nmap taraması:
-```bash
-xas> run nmap full 192.168.1.10
-```
-
-### Nmap XML raporu yükleme:
-```bash
-xas> load nmap scan.xml
-```
-
-------------------------------------------------------------
-# ZAP KOMUTLARI
-------------------------------------------------------------
-
-### Hızlı ZAP taraması:
-```bash
-xas> run zap https://hedef.com
-```
-
-### Tam ZAP taraması:
-```bash
-xas> run zap full https://hedef.com
-```
-
-### ZAP JSON raporu yükleme:
-```bash
-xas> load zap zap.json
-```
-
-------------------------------------------------------------
-# ZAFİYET YÖNETİMİ
-------------------------------------------------------------
-
-### Tüm zafiyetler (severity sıralı):
-```bash
-xas> list
-```
-
-### Severity filtreleme:
-```bash
-xas> list sev=critical
-xas> list sev=high
-xas> list sev=medium
-xas> list sev=low
-xas> list sev=info
-```
-
-### Zafiyet arama:
-```bash
-xas> search sql
-xas> search CVE-2021
-```
-
-### Zafiyet detayı:
-```bash
-xas> detail 3
-```
-
-------------------------------------------------------------
-# ZAFİYET ÇÖZÜM REHBERİ
-------------------------------------------------------------
-
-```bash
-xas> fix 3
-```
-
-Desteklenen zafiyet türleri:
-- SQL Injection (critical)
-- Command Injection (critical)
-- Telnet açık port (high)
-- FTP açık port (high)
-- RDP açık port (high)
-- SMB açık port (high)
-- MySQL açık port (high)
-- MSSQL açık port (high)
-- VNC açık port (high)
-- Redis açık port (high)
-- MongoDB açık port (high)
-- SSL/TLS sorunları (high)
-- DNS Zone Transfer (high)
-- Zayıf şifre politikası (high)
-- XSS (medium)
-- CSRF (medium)
-- CORS yanlış yapılandırma (medium)
-- Directory Listing (medium)
-- HTTP Proxy açık (medium)
-- SSH zayıf yapılandırma (medium)
-- Open Redirect (medium)
-- Güvenlik başlıkları eksik (low)
-
-------------------------------------------------------------
-# İSTATİSTİK
-------------------------------------------------------------
-
-```bash
-xas> stats
-```
-
-Örnek çıktı:
-```
-──── Zafiyet İstatistikleri ────
-
-CRITICAL   ████░░░░░░░░░░░░░░░░ 2
-HIGH       ████████████████████ 5
-MEDIUM     ██████████████░░░░░░ 7
-LOW        ██████░░░░░░░░░░░░░░ 3
-INFO       ██░░░░░░░░░░░░░░░░░░ 1
-
-Toplam: 18 zafiyet
-
-Kaynak Dağılımı:
-  NMAP    : 10
-  ZAP     : 8
-```
-
-------------------------------------------------------------
-# RAPORLAMA VE DIŞA AKTARMA
-------------------------------------------------------------
-
-### Tüm raporları oluştur (TXT + HTML + JSON):
-```bash
-xas> report
-```
-
-### JSON dışa aktarma:
-```bash
-xas> export json
-```
-
-### CSV dışa aktarma:
-```bash
-xas> export csv
-```
-
-Oluşan dosyalar:
-```
-reports/report.txt
-reports/report.html
-reports/report.json
-reports/report.csv
-```
-
-------------------------------------------------------------
-# ARAÇ DURUMU
-------------------------------------------------------------
-
+### Araç durumu (kategorili, kurulu/değil):
 ```bash
 xas> tools
 ```
 
+### Eksik aracı kur (onaylı; Linux/apt):
+```bash
+xas> install nikto
+```
+Onay istenir, ardından `sudo apt install -y <paket>` çalışır. Windows'ta veya apt
+paketi yoksa otomatik kurulum yerine indirme bağlantısı gösterilir.
+
+### GUI aracı başlat (Wireshark / Burp Suite / Armitage):
+```bash
+xas> launch wireshark
+```
+GUI araçlar yalnızca başlatılır; çıktıları XAS tarafından ayrıştırılmaz.
+(Ağ trafiği analizi için terminalden `tshark` adapter'ı kullanılır.)
+
 ------------------------------------------------------------
-# ÇIKIŞ
+# 🔧 TEK ARAÇ ÇALIŞTIRMA
 ------------------------------------------------------------
 
 ```bash
-xas> exit
+xas> run nmap -sV 192.168.1.10
+xas> run nmap full 192.168.1.10
+xas> run zap https://hedef.com
+xas> run msfconsole 192.168.1.10
+```
+
+`msfconsole` yalnızca DOĞRULAMA modunda çalışır: sabit bir dizi `auxiliary/scanner`
+modülüyle (MS17-010, BlueKeep, anonim FTP, VNC no-auth) zafiyetin VAR olup olmadığını
+doğrular. Exploit modülü, oturum/shell açma veya post-exploitation yapılmaz.
+
+### Hazır rapor yükleme:
+```bash
+xas> load nmap scan.xml
+xas> load zap zap.json
 ```
 
 ------------------------------------------------------------
-# GELİŞTİRİLEBİLİR MİMARİ
+# 🧠 AKILLI TARAMA (tek araç, otomatik seçim)
 ------------------------------------------------------------
 
-XAS tamamen modülerdir:
-- Yeni parser eklenebilir (parsers/ klasörü)
-- Yeni runner eklenebilir (runners/ klasörü)
-- Yeni fix rehberleri eklenebilir (fixGuides.js)
-- Yeni komutlar eklenebilir (commands.js)
+```bash
+xas> scan 192.168.1.10        # IP → Nmap
+xas> scan https://hedef.com   # URL → ZAP
+xas> scan full 192.168.1.10   # Nmap + ZAP birlikte
+```
+
+------------------------------------------------------------
+# 📋 ZAFİYET YÖNETİMİ
+------------------------------------------------------------
+
+```bash
+xas> list                 # tümü (severity sıralı)
+xas> list sev=critical    # filtrele: critical|high|medium|low|info
+xas> search sql           # anahtar kelime / CVE ara
+xas> detail 3             # bulgu detayı
+xas> stats                # severity + kaynak dağılımı
+```
+
+------------------------------------------------------------
+# 🛡️ KAPATMA REHBERİ
+------------------------------------------------------------
+
+### Tek bulgu için:
+```bash
+xas> fix 3
+```
+
+### Tüm bulgular için toplu rehber (tür bazında gruplu):
+```bash
+xas> guide
+```
+
+Rehberi olan türler: SQL/Command Injection, XSS, CSRF, Telnet, FTP, RDP, SMB,
+MySQL, MSSQL, VNC, Redis, MongoDB, SSH zayıf yapılandırma, HTTP Proxy,
+Directory Listing, Erişilebilir Yönetim Paneli, SSL/TLS, CORS, Open Redirect,
+Güvenlik başlıkları eksik, Zayıf parola, DNS Zone Transfer.
+
+------------------------------------------------------------
+# 📄 RAPORLAMA
+------------------------------------------------------------
+
+```bash
+xas> report        # reports/report.txt + .html + .json
+xas> export json
+xas> export csv
+```
+
+------------------------------------------------------------
+# 🧩 YENİ ARAÇ EKLEME (adapter mimarisi)
+------------------------------------------------------------
+
+1. `src/tools/adapters/<arac>.js` içinde `Adapter`'ı genişleten bir sınıf yazın
+   (name, category, binary, aptPackage, mode ve `parse()`/`run()`).
+2. `src/tools/registry.js` içine bir satırla kaydedin.
+
+Çekirdek kod değişmez; `tools`, `install`, `start`, `guide` yeni aracı otomatik
+tanır. `managed` araçlar çıktısı ayrıştırılıp risk skoruna katılır; `launch`
+araçları yalnızca başlatılır.
 
 ------------------------------------------------------------
 ## LİSANS

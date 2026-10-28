@@ -76,6 +76,20 @@ const FIX_GUIDES = {
       description: "23/TCP (Telnet) portunu firewall üzerinden engeller.",
       windows: 'netsh advfirewall firewall add rule name="XAS: Block Telnet (23)" dir=in action=block protocol=TCP localport=23',
       linux: 'sudo ufw deny 23/tcp'
+    },
+    remediate: {
+      os: "linux",
+      needs: "systemd",
+      description: "Telnet servisini durdurur ve devre dışı bırakır",
+      backup: [],
+      sudo: true,
+      commands: [
+        "systemctl stop telnet.socket 2>/dev/null || systemctl stop inetd 2>/dev/null || true",
+        "systemctl disable telnet.socket 2>/dev/null || true"
+      ],
+      verify: [
+        { command: "systemctl is-active telnet.socket 2>/dev/null || echo inactive", pass: "inactive|unknown|failed|no such" }
+      ]
     }
   },
 
@@ -103,6 +117,20 @@ const FIX_GUIDES = {
       description: "21/TCP (FTP) portunu firewall üzerinden engeller.",
       windows: 'netsh advfirewall firewall add rule name="XAS: Block FTP (21)" dir=in action=block protocol=TCP localport=21',
       linux: 'sudo ufw deny 21/tcp'
+    },
+    remediate: {
+      os: "linux",
+      needs: "systemd",
+      description: "vsftpd anonim erişimini kapatır ve servisi yeniden başlatır",
+      backup: ["/etc/vsftpd.conf"],
+      sudo: true,
+      commands: [
+        "sed -i 's/^anonymous_enable=YES/anonymous_enable=NO/' /etc/vsftpd.conf",
+        "systemctl restart vsftpd"
+      ],
+      verify: [
+        { command: "grep -c '^anonymous_enable=NO' /etc/vsftpd.conf 2>/dev/null || echo 0", pass: "[1-9]" }
+      ]
     }
   },
 
@@ -366,6 +394,37 @@ const FIX_GUIDES = {
     ],
     recommendation:
       "Dizin listeleme, saldırganlara dosya yapınızı gösterir. Tüm web sunucularında kapatın."
+  },
+
+  admin_panel: {
+    severity: "high",
+    title: "Erişilebilir Yönetim Paneli",
+    steps: [
+      {
+        title: "Paneli internete kapatın",
+        items: [
+          "Yönetim panelini yalnızca iç ağdan/VPN üzerinden erişilebilir yapın",
+          "Firewall veya reverse proxy ile IP kısıtlaması (allowlist) uygulayın"
+        ]
+      },
+      {
+        title: "Kimlik doğrulamayı güçlendirin",
+        items: [
+          "Güçlü parola + çok faktörlü doğrulama (MFA) zorunlu kılın",
+          "Varsayılan kullanıcı adı/parolaları (admin/admin) değiştirin",
+          "Başarısız giriş denemelerine rate-limit / lockout ekleyin"
+        ]
+      },
+      {
+        title: "Varlığı gizleyin",
+        items: [
+          "Panel yolunu tahmin edilebilir adlardan (/admin, /wp-admin) değiştirin",
+          "Dizin listelemeyi ve bilgilendirici hata mesajlarını kapatın"
+        ]
+      }
+    ],
+    recommendation:
+      "İnternete açık yönetim panelleri kaba kuvvet ve varsayılan kimlik bilgisi saldırılarının ilk hedefidir. Erişimi ağ düzeyinde kısıtlayın."
   },
 
   ssl_expired: {
