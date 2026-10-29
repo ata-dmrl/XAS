@@ -58,29 +58,46 @@ function printFixGuide(fixKey) {
   }
 }
 
+// Ana REPL'in readline arayüzü. index.js setSharedReadline() ile ayarlar.
+// ÖNEMLİ: aynı stdin üzerinde ikinci bir readline.Interface AÇMIYORUZ —
+// iki arayüz birden stdin'i dinlerse tek satırlık girdi ikisine birden
+// gidip (ör. parola girişi hem soruya hem de "yeni komut" olarak işlenip)
+// "Bilinmeyen komut" hatasına yol açar. Bunun yerine mevcut rl.question()
+// kullanılır: bu, bir sonraki satırı normal 'line' olayı olarak değil,
+// doğrudan bu sorunun cevabı olarak yakalar.
+let sharedRl = null;
+function setSharedReadline(rl) {
+  sharedRl = rl;
+}
+
+function getRl() {
+  if (sharedRl) return sharedRl;
+  // Paylaşılan arayüz ayarlanmadıysa (ör. birim testleri) tek seferlik kur.
+  return readline.createInterface({ input: process.stdin, output: process.stdout });
+}
+
 function askConfirmation(query) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
+  const rl = getRl();
+  const isShared = rl === sharedRl;
   return new Promise(resolve => rl.question(query, ans => {
-    rl.close();
+    if (!isShared) rl.close();
     resolve(ans);
   }));
 }
 
 // Parola gibi gizli girdiler için: soruyu gösterir ama yazılanları ekrana basmaz.
 function askHidden(query) {
+  const rl = getRl();
+  const isShared = rl === sharedRl;
   return new Promise(resolve => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    let muted = false;
-    rl._writeToOutput = function (str) { if (!muted) rl.output.write(str); };
+    const originalWrite = rl._writeToOutput;
+    rl._writeToOutput = function () { /* girdiyi gizle */ };
     rl.question(query, ans => {
-      rl.close();
+      rl._writeToOutput = originalWrite;
       rl.output.write("\n");
+      if (!isShared) rl.close();
       resolve(ans);
     });
-    muted = true;
   });
 }
 
@@ -1134,5 +1151,6 @@ async function handleCommand(ctx, line) {
 
 module.exports = {
   XasContext,
-  handleCommand
+  handleCommand,
+  setSharedReadline
 };

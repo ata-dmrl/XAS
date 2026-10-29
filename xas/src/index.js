@@ -1,7 +1,7 @@
 // src/index.js
 const { banner } = require("./banner");
 const readline = require("readline");
-const { XasContext, handleCommand } = require("./commands");
+const { XasContext, handleCommand, setSharedReadline } = require("./commands");
 const { checkAllTools } = require("./toolCheck");
 const registry = require("./tools/registry");
 
@@ -45,8 +45,12 @@ function startRepl() {
     }
   });
 
+  setSharedReadline(rl);
   rl.prompt();
 
+  // Boş satır (üst üste Enter) hiçbir şey yapmaz, sadece prompt'u tekrar basar —
+  // handleCommand zaten boş girdiyi sessizce atlar. Çıkış yalnızca 'exit'/'quit'
+  // komutuyla veya Ctrl+C (SIGINT) ile olur.
   rl.on("line", async line => {
     try {
       await handleCommand(ctx, line);
@@ -56,6 +60,23 @@ function startRepl() {
     rl.setPrompt(promptFor(ctx.mode));
     rl.prompt();
   });
+
+  let exiting = false;
+  function gracefulExit() {
+    if (exiting) return;
+    exiting = true;
+    console.log("\n\x1b[36m  Güle güle! 🛡️\x1b[0m");
+    process.exit(0);
+  }
+
+  // Ctrl+C: her zaman (herhangi bir kipte, bir soru beklerken de) düzgün çıkar.
+  // rl'nin kendi 'SIGINT' olayı yalnızca gerçek bir TTY'de tuş vuruşu olarak
+  // algılanır; stdin bir TTY olmayabileceği durumlar için işletim sistemi
+  // seviyesindeki SIGINT sinyalini de ayrıca yakalıyoruz (güvenlik ağı).
+  rl.on("SIGINT", gracefulExit);
+  process.on("SIGINT", gracefulExit);
+  // Ctrl+D veya girdi akışı başka bir sebeple kapanırsa da düzgün çık.
+  rl.on("close", gracefulExit);
 }
 
 startRepl();
